@@ -181,7 +181,7 @@ def encoder_rnn(rnn_inputs, rnn_size, num_layers, keep_prob, sequence_length):
 def decode_training_set(encoder_state, decoder_cell, decoder_embedded_input, sequence_length, decoding_scope,
                         output_function, keep_prob, batch_size):
     attention_states = tf.zeros([batch_size, 1, decoder_cell.output_size])
-    attention_keys, attention_values, attention_score_function, attention_construct_function = tf.contrib.seq2seq.prepare_attention(attention_states, 
+    attention_keys, attention_values, attention_score_function, attention_construct_function = tf.compat.v1.nn.rnn_cell.prepare_attention(attention_states, 
                                                                                                                                     attention_option = 'bahdanau', 
                                                                                                                                     num_units = decoder_cell.output_size)
     training_decoder_function = tf.contrib.seq2seq.attention_decoder_fn_train(encoder_state[0],
@@ -203,7 +203,7 @@ def decode_test_set(encoder_state, decoder_cell, decoder_embedding_matrix,
                     sos_id, eos_id, maximum_length, num_words, sequence_length, 
                     decoding_scope, output_function, keep_prob, batch_size):
     attention_states = tf.zeros([batch_size, 1, decoder_cell.output_size])
-    attention_keys, attention_values, attention_score_function, attention_construct_function = tf.contrib.seq2seq.prepare_attention(attention_states, 
+    attention_keys, attention_values, attention_score_function, attention_construct_function = tf.compat.v1.nn.rnn_cell.prepare_attention(attention_states, 
                                                                                                                                     attention_option = 'bahdanau', 
                                                                                                                                     num_units = decoder_cell.output_size)
     test_decoder_function = tf.contrib.seq2seq.attention_decoder_fn_inference(output_function,
@@ -300,14 +300,29 @@ encoding_embedding_size = 512
 decoding_embedding_size = 512
 learning_rate = 0.01
 learning_rate_decay = 0.9
+min_learning_rate = 0.0001
+keep_probability = 0.5
 
+# defining a session
+tf.reset_default_graph()
+session = tf.InteractiveSession()
 
+# loading the model inputs
+inputs, targets, lr, keep_prob = model_input()
 
+# setting the sequence length
+sequence_length = tf.placeholder_with_default(25, None, name='sequence_length')
 
+# getting the shape of the inputs tensor
+input_shape = tf.shape(inputs)
 
-
-
-
+# getting the training and test predictions
+training_predictions, test_predictions = seq2seq_model(tf.reverse(inputs, [-1]), targets, 
+                                                       keep_prob, batch_size,
+                                                       sequence_length, len(answerswords2int),
+                                                       len(questionswords2int), encoding_embedding_size, 
+                                                       decoding_embedding_size, rnn_size, 
+                                                       num_layers, questionswords2int)
 
 
 
