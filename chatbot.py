@@ -342,7 +342,19 @@ def apply_padding(batch_of_sequences, word2int):
 # split the data into btaches of questions and asnwers
 def split_into_batches(questions, answers, batch_size):
     for batch_index in range(0, len(questions) // batch_size):
-        pass
+        start_index = batch_index * batch_size
+        questions_in_batch = questions[start_index : start_index + batch_size]
+        answers_in_batch = answers[start_index : start_index + batch_size]
+        padded_questions_in_batch = np.array(apply_padding(questions_in_batch, questionswords2int))
+        padded_answers_in_batch = np.array(apply_padding(answers_in_batch, answerswords2int))
+        yield padded_questions_in_batch, padded_answers_in_batch        
+
+# splitting the questions and answers into training and validation sets
+training_validation_split = int(len(sorted_clean_questions) * 0.15)
+training_questions = sorted_clean_questions[training_validation_split:]
+training_answers = sorted_clean_answers[training_validation_split:]
+val_questions = sorted_clean_questions[:training_validation_split]
+val_answers = sorted_clean_answers[:training_validation_split]
 
 
 
