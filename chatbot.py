@@ -339,7 +339,7 @@ def apply_padding(batch_of_sequences, word2int):
     max_sequence_length = max([len(sequence) for sequence in batch_of_sequences])
     return [sequence + [word2int['<PAD>']] * (max_sequence_length - len(sequence)) for sequence in batch_of_sequences]
 
-# split the data into btaches of questions and asnwers
+# split the data into batches of questions and asnwers
 def split_into_batches(questions, answers, batch_size):
     for batch_index in range(0, len(questions) // batch_size):
         start_index = batch_index * batch_size
@@ -356,39 +356,67 @@ training_answers = sorted_clean_answers[training_validation_split:]
 val_questions = sorted_clean_questions[:training_validation_split]
 val_answers = sorted_clean_answers[:training_validation_split]
 
+# training
+batch_index_check_training_loss = 100
+batch_index_check_validation_loss = ((len(training_questions)) // batch_size // 2) - 1
+total_training_loss_error = 0
+list_validation_loss_error = []
+early_stopping_check = 0
+early_stopping_stop = 1000
+checkpoint = "chatbot_weights.ckpt"
+session.run(tf.global_variables_initializer())
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+for epoch in range(1, epochs + 1):
+    for batch_index, (padded_questions_in_batch, padded_answers_in_batch) in enumerate(split_into_batches(training_questions, training_answers, batch_size)):
+        starting_time = time.time()
+        _, batch_training_loss_error = session.run([optimizer_gradient_clipping, loss_error], {inputs: padded_questions_in_batch,
+                                                                                               targets: padded_answers_in_batch,
+                                                                                               lr: learning_rate,
+                                                                                               sequence_length: padded_answers_in_batch.shape[1],
+                                                                                               keep_prob: keep_probability})
+        total_training_loss_error += batch_training_loss_error
+        ending_time = time.time()
+        batch_time = ending_time - starting_time
+        if batch_index % batch_index_check_training_loss == 0:
+            print('Epoch: {:>3}/{}, Batch: {:>4}/{}, Training Loss Error: {:>6.3f}, Training Time on 100 Batches: {:d} seconds'.format(epoch,
+                                                                                                                                       epochs,
+                                                                                                                                       batch_index,
+                                                                                                                                       len(training_questions) // batch_size,
+                                                                                                                                       total_training_loss_error / batch_index_check_training_loss,
+                                                                                                                                       int(batch_time * batch_index_check_training_loss)))
+            total_training_loss_error = 0
+        if batch_index % batch_index_check_validation_loss == 0 and batch_index > 0:
+            total_validation_loss_error = 0
+            starting_time = time.time()
+            for batch_index_validation, (padded_questions_in_batch, padded_answers_in_batch) in enumerate(split_into_batches(val_questions, val_answers, batch_size)):
+                batch_validation_loss_error = session.run(loss_error, {inputs: padded_questions_in_batch,
+                                                                       targets: padded_answers_in_batch,
+                                                                       lr: learning_rate,
+                                                                       sequence_length: padded_answers_in_batch.shape[1],
+                                                                       keep_prob: 1})
+                total_validation_loss_error += batch_validation_loss_error
+            ending_time = time.time()
+            batch_time = ending_time - starting_time
+            average_validation_loss_error = total_validation_loss_error / (len(val_questions) / batch_size)
+            print('Validation Loss Error: {:>6.3f}, Batch Validation Time: {:d} seconds'.format(average_validation_loss_error, int(batch_time)))
+            learning_rate *= learning_rate_decay
+            if learning_rate < min_learning_rate:
+                learning_rate = min_learning_rate
+            list_validation_loss_error.append(average_validation_loss_error)
+            if average_validation_loss_error <= min(list_validation_loss_error):
+                print('I speak better now!!')
+                early_stopping_check = 0
+                saver = tf.train.Saver()
+                saver.save(session, checkpoint)
+            else:
+                print("Sorry I do not speak better, I need to practice more.")
+                early_stopping_check += 1
+                if early_stopping_check == early_stopping_stop:
+                    break
+    if early_stopping_check == early_stopping_stop:
+        print("My apologies, I cannot speak better anymore. This is the best I can do.")
+        break
+print("Game Over")
 
 
 
